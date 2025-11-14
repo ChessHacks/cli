@@ -37,6 +37,8 @@ npm install
 
 Afterwards, make a copy of `.env.template` and name it `.env.local` (NOT `.env`). Then fill out the values with the path to your Python environment, and the ports you want to use.
 
+> Copy the `.env.local` file to the `devtools` directory as well.
+
 ## Installing `devtools` (if you did not run `npx chesshacks create`)
 
 If you started from your own project and only want to add the devtools UI, you can install it with the CLI:
