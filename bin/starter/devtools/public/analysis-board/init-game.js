@@ -28,14 +28,13 @@ window.initAnalysisBoard = async function (gameData) {
     console.log("initAnalysisBoard: enabling play-vs-bot mode", {
       playerColor: gameData.playerColor
     });
-    chessUI.setDisableVariations(true);
 
     chessUI.onHumanMove(async () => {
       try {
         console.log("initAnalysisBoard: human move detected");
         const pgn =
-          chessUI && typeof chessUI.getCurrentPgn === "function"
-            ? chessUI.getCurrentPgn()
+          chessUI && typeof chessUI.getGamePGN === "function"
+            ? chessUI.getGamePGN()
             : game.pgn;
         if (pgn && typeof pgn === "string") {
           game.pgn = pgn;
@@ -133,6 +132,8 @@ window.initAnalysisBoard = async function (gameData) {
   chessUI.addTeardownCallback(() =>
     $(".tab-button").off("click", tabClickHandler)
   );
+
+  window.chessUI = chessUI;
 
   return chessUI;
 };

@@ -23,6 +23,7 @@ export async function POST(req: NextRequest) {
   console.log("Proxying request to serve.py /move");
 
   const servePort = process.env.SERVE_PORT || "5058";
+
   const response = await fetch(`http://127.0.0.1:${servePort}/move`, {
     method: "POST",
     headers: {

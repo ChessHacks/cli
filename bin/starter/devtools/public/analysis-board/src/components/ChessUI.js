@@ -38,9 +38,6 @@ export class ChessUI {
     this._humanMoveListeners = new Set();
     this._humanMoveListenerBound = false;
     this._boardHumanMoveHandler = (move) => this._handleBoardHumanMove(move);
-    this._disableVariations = true;
-    this._baseBoardInteractivity = true;
-    this._variationLockActive = false;
 
     this.chess = new Chess();
     this.settingsMenu = new SettingsMenu(".settings-menu-container", this);
@@ -67,7 +64,6 @@ export class ChessUI {
     );
 
     this.settingsMenu.init(this.board);
-    this._setBaseBoardInteractivity(false);
 
     this.moveTree = new MoveTree();
     this.moveNavigator = new MoveNavigator(this);
@@ -159,6 +155,59 @@ export class ChessUI {
         this._humanMoveListenerBound = false;
       }
     };
+  }
+
+  getGamePGN() {
+    // go through the move tree (up to the current node) and build the PGN string
+    if (!this.moveTree || !this.moveTree.currentNode) {
+      return "";
+    }
+
+    const currentNode = this.moveTree.currentNode;
+
+    // Get the moves from root to current node
+    const moves = this.moveTree.getMovesToNode(currentNode.id);
+
+    if (moves.length === 0) {
+      return "";
+    }
+
+    // Build PGN string from the moves
+    const pgnMoves = [];
+    let whiteMove = null;
+    let moveNumber = 1;
+
+    for (const moveData of moves) {
+      if (!moveData.san || !moveData.move) continue;
+
+      if (moveData.move.color === "w") {
+        // White move - start a new move number
+        // If we have a pending white move, output it first
+        if (whiteMove) {
+          pgnMoves.push(`${moveNumber}. ${whiteMove}`);
+          moveNumber++;
+        }
+        whiteMove = moveData.san;
+      } else if (moveData.move.color === "b") {
+        // Black move - complete the turn
+        if (whiteMove) {
+          pgnMoves.push(`${moveNumber}. ${whiteMove} ${moveData.san}`);
+          whiteMove = null;
+          moveNumber++;
+        } else {
+          // Black move without preceding white move (e.g., starting from a position where black moves first)
+          pgnMoves.push(`${moveNumber}... ${moveData.san}`);
+          moveNumber++;
+        }
+      }
+    }
+
+    // Handle case where we end on a white move
+    if (whiteMove) {
+      pgnMoves.push(`${moveNumber}. ${whiteMove}`);
+    }
+
+    return pgnMoves.join(" ");
   }
 
   hideTab(tabName) {
@@ -270,124 +319,6 @@ export class ChessUI {
     return this.board?.chess?.fen?.() || this.chess?.fen?.() || null;
   }
 
-  getCurrentPgn() {
-    if (!this.moveTree || !this.moveTree.currentNode) {
-      if (this.chess && typeof this.chess.pgn === "function") {
-        return this.chess.pgn();
-      }
-      return this.game?.pgn || "";
-    }
-
-    const chess = new Chess();
-
-    let path = null;
-    if (typeof this.moveTree.getPathToNode === "function") {
-      path = this.moveTree.getPathToNode(this.moveTree.currentNode.id);
-    }
-    if (!Array.isArray(path) || path.length === 0) {
-      path = this.moveTree.mainline || [];
-    }
-
-    for (const node of path) {
-      if (!node || !node.move) continue;
-      const move = { from: node.move.from, to: node.move.to };
-      if (node.move.promotion) {
-        move.promotion = node.move.promotion;
-      }
-      try {
-        chess.move(move);
-      } catch (e) {}
-    }
-
-    if (typeof chess.pgn === "function") {
-      return chess.pgn();
-    }
-
-    return this.game?.pgn || "";
-  }
-
-  setDisableVariations(disable = true) {
-    const normalized = Boolean(disable);
-    if (this._disableVariations === normalized) {
-      this._updateBoardInteractivity();
-      return;
-    }
-
-    this._disableVariations = normalized;
-    this._updateBoardInteractivity();
-  }
-
-  areVariationsDisabled() {
-    return this._disableVariations;
-  }
-
-  _setBaseBoardInteractivity(value) {
-    const normalized = Boolean(value);
-    if (this._baseBoardInteractivity !== normalized) {
-      this._baseBoardInteractivity = normalized;
-      this._updateBoardInteractivity();
-      return;
-    }
-
-    // Even if the value is unchanged, re-run to ensure locks are enforced for new positions.
-    this._updateBoardInteractivity();
-  }
-
-  _isAtLatestMove() {
-    if (!this.moveTree || !this.moveTree.currentNode) {
-      return true;
-    }
-
-    const currentNode = this.moveTree.currentNode;
-    const finalNode =
-      typeof this.moveTree.getFinalMove === "function"
-        ? this.moveTree.getFinalMove()
-        : null;
-
-    if (!finalNode) {
-      const rootNode = this.moveTree.mainline?.[0] || null;
-      return !rootNode || currentNode.id === rootNode.id;
-    }
-
-    return currentNode.id === finalNode.id;
-  }
-
-  _updateBoardInteractivity() {
-    if (
-      !this.board ||
-      typeof this.board.getOption !== "function" ||
-      typeof this.board.setOption !== "function"
-    ) {
-      return;
-    }
-
-    let targetInteractive = Boolean(this._baseBoardInteractivity);
-    const lockActive =
-      targetInteractive && this._disableVariations && !this._isAtLatestMove();
-
-    if (lockActive) {
-      targetInteractive = false;
-    }
-
-    let currentInteractive = null;
-    try {
-      currentInteractive = Boolean(this.board.getOption("isInteractive"));
-    } catch (error) {
-      console.warn("Unable to read current board interactivity:", error);
-    }
-
-    if (currentInteractive !== targetInteractive) {
-      this.board.setOption({ isInteractive: targetInteractive });
-    }
-
-    this._variationLockActive = lockActive;
-    if (lockActive) {
-      $(".chess-container").addClass("variations-locked");
-    } else {
-      $(".chess-container").removeClass("variations-locked");
-    }
-  }
-
   _handleBoardHumanMove(move) {
     if (this._isDestroyed || this._humanMoveListeners.size === 0) return;
 
@@ -410,11 +341,7 @@ export class ChessUI {
       this.board?.chess?.fen?.() ||
       null;
 
-    const moveForCallback = {
-      ...move,
-      before: beforeFen,
-      after: afterFen
-    };
+    const moveForCallback = this.getGamePGN();
 
     this._humanMoveListeners.forEach((listener) => {
       try {
@@ -745,7 +672,7 @@ export class ChessUI {
 
     $(".analysis-overlay").addClass("active");
     $(".tab-content, .bottom-content").addClass("blur-content");
-    this._setBaseBoardInteractivity(false);
+    this.board.setOption({ isInteractive: false });
 
     const engineType = this.settingsMenu.getSettingValue("engineType");
     const engineDepth = this.settingsMenu.getSettingValue("engineDepth") || 14;
@@ -764,7 +691,7 @@ export class ChessUI {
       return;
     }
 
-    this._setBaseBoardInteractivity(true);
+    this.board.setOption({ isInteractive: true });
 
     // Store analysis for click callback
     this.analysis = analysis;
@@ -891,8 +818,6 @@ export class ChessUI {
 
     EvaluationBar.updateEvaluationBar();
     Clock.resetClocks();
-
-    $(".chess-container").removeClass("variations-locked");
 
     if (this._hiddenTabs.size > 0) {
       this._hiddenTabs.forEach((tabName) => {
