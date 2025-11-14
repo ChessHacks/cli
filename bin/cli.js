@@ -18,11 +18,6 @@ if (!projectName) {
   projectName = "my-chesshacks-bot";
 }
 
-if (command === "install") {
-  console.log("Install command is not implemented yet.");
-  process.exit(0);
-}
-
 const projectPath = path.join(process.cwd(), projectName);
 const starterPath = path.join(__dirname, "starter");
 
@@ -47,6 +42,32 @@ function copyRecursive(src, dest) {
   }
 }
 
-copyRecursive(starterPath, projectPath);
+if (command === "install") {
+  const installRoot = projectName ? projectPath : process.cwd();
+  const devtoolsSrc = path.join(starterPath, "devtools");
+  const devtoolsDest = path.join(installRoot, "devtools");
 
-console.log(`✅ Created ${projectName}`);
+  fs.mkdirSync(installRoot, { recursive: true });
+  copyRecursive(devtoolsSrc, devtoolsDest);
+
+  const gitignorePath = path.join(installRoot, ".gitignore");
+  let gitignoreContents = "";
+  if (fs.existsSync(gitignorePath)) {
+    gitignoreContents = fs.readFileSync(gitignorePath, "utf8");
+  }
+
+  if (
+    !gitignoreContents.split("\n").some((line) => line.trim() === "devtools")
+  ) {
+    const newline =
+      gitignoreContents.endsWith("\n") || gitignoreContents.length === 0
+        ? ""
+        : "\n";
+    fs.writeFileSync(gitignorePath, gitignoreContents + newline + "devtools\n");
+  }
+
+  console.log(`\x1b[32m\x1b[1m\x1b[0m Installed devtools in ${installRoot}`);
+} else {
+  copyRecursive(starterPath, projectPath);
+  console.log(`\x1b[32m\x1b[1m\x1b[0m Created ${projectName}`);
+}

@@ -4,6 +4,7 @@ from fastapi.responses import JSONResponse
 import uvicorn
 import time
 import chess
+import os
 
 from src.utils import chess_manager
 from src import main
@@ -30,6 +31,7 @@ async def get_move(request: Request):
     timeleft = data["timeleft"]  # in milliseconds
 
     chess_manager.set_context(pgn, timeleft)
+    print("pgn", pgn)
 
     try:
         start_time = time.perf_counter()
@@ -37,11 +39,22 @@ async def get_move(request: Request):
         end_time = time.perf_counter()
         time_taken = (end_time - start_time) * 1000
     except Exception as e:
-        return JSONResponse(content={move: None, "move_probs": None, "time_taken": time.perf_counter() - start_time, "error": "Bot raised an exception", "logs": logs}, status_code=500)
+        time_taken = (time.perf_counter() - start_time) * 1000
+        return JSONResponse(
+            content={
+                "move": None,
+                "move_probs": None,
+                "time_taken": time_taken,
+                "error": "Bot raised an exception",
+                "logs": None,
+                "exception": str(e),
+            },
+            status_code=500,
+        )
 
     # Confirm type of move_probs
     if not isinstance(move_probs, dict):
-        return JSONResponse(content={move: None, "move_probs": None, "error": "Failed to get move", "message": "Move probabilities is not a dictionary"}, status_code=500)
+        return JSONResponse(content={"move": None, "move_probs": None, "error": "Failed to get move", "message": "Move probabilities is not a dictionary"}, status_code=500)
 
     for m, prob in move_probs.items():
         if not isinstance(m, chess.Move) or not isinstance(prob, float):
@@ -53,4 +66,5 @@ async def get_move(request: Request):
     return JSONResponse(content={"move": move.uci(), "error": None, "time_taken": time_taken, "move_probs": move_probs_dict, "logs": logs})
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=5058)
+    port = int(os.getenv("SERVE_PORT", "5058"))
+    uvicorn.run(app, host="0.0.0.0", port=port)

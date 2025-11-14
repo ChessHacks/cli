@@ -5,6 +5,9 @@ from chess.pgn import read_game
 import contextlib
 import io
 import logging
+import sys
+
+logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 
 
 @dataclass(frozen=True)

@@ -4,7 +4,7 @@ import random
 import time
 
 # Write code here that runs once
-# Can do things like load models from huggingface, make connections to subprocesses, etc.
+# Can do things like load models from huggingface, make connections to subprocesses, etcwenis
 
 
 @chess_manager.entrypoint
@@ -13,9 +13,13 @@ def test_func(ctx: GameContext):
     # Return a python-chess Move object that is a legal move for the current position
 
     print("Cooking move...")
+    print(ctx.board.move_stack)
     time.sleep(0.1)
 
     legal_moves = list(ctx.board.generate_legal_moves())
+    if not legal_moves:
+        ctx.logProbabilities({})
+        raise ValueError("No legal moves available (i probably lost didn't i)")
 
     move_weights = [random.random() for _ in legal_moves]
     total_weight = sum(move_weights)
