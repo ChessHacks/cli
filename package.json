@@ -1,8 +1,8 @@
 {
-  "name": "create-chesshacks-bot",
-  "version": "1.0.0",
+  "name": "chesshacks",
+  "version": "1.0.1",
   "bin": {
-    "create-chesshacks-bot": "./bin/cli.js"
+    "chesshacks": "./bin/cli.js"
   },
   "files": [
     "bin",

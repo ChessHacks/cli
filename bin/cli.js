@@ -2,7 +2,27 @@
 const fs = require("fs");
 const path = require("path");
 
-const projectName = process.argv[2] || "my-chesshacks-bot";
+const rawArgs = process.argv.slice(2);
+
+let command = "create";
+let projectName;
+
+if (rawArgs[0] === "create" || rawArgs[0] === "install") {
+  command = rawArgs[0];
+  projectName = rawArgs[1];
+} else {
+  projectName = rawArgs[0];
+}
+
+if (!projectName) {
+  projectName = "my-chesshacks-bot";
+}
+
+if (command === "install") {
+  console.log("Install command is not implemented yet.");
+  process.exit(0);
+}
+
 const projectPath = path.join(process.cwd(), projectName);
 
 fs.mkdirSync(projectPath, { recursive: true });
