@@ -69,5 +69,21 @@ if (command === "install") {
   console.log(`\x1b[32m\x1b[1m\x1b[0m Installed devtools in ${installRoot}`);
 } else {
   copyRecursive(starterPath, projectPath);
+  const gitignorePath = path.join(projectPath, ".gitignore");
+  let gitignoreContents = "";
+  if (fs.existsSync(gitignorePath)) {
+    gitignoreContents = fs.readFileSync(gitignorePath, "utf8");
+  }
+
+  if (
+    !gitignoreContents.split("\n").some((line) => line.trim() === "devtools")
+  ) {
+    const newline =
+      gitignoreContents.endsWith("\n") || gitignoreContents.length === 0
+        ? ""
+        : "\n";
+    fs.writeFileSync(gitignorePath, gitignoreContents + newline + "devtools\n");
+  }
+
   console.log(`\x1b[32m\x1b[1m\x1b[0m Created ${projectName}`);
 }
